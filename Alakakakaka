@@ -1,0 +1,278 @@
+-- "Kill Death" Button Script with:
+-- Rainbow Platform
+-- Rainbow Text
+-- Gray/Black Animated Button Background
+-- Montserrat Font
+-- UICorner
+-- Draggable Button
+-- 7 Second Cooldown
+
+-- Services
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+
+-- Configuration
+local teleportPosition = Vector3.new(240.31468200683594, -491.9150390625, -183.96755981445312)
+local platformSize = Vector3.new(10, 1, 10)
+local loopDuration = 5
+local teleportInterval = 0.05
+local cooldownTime = 7
+
+-- Variables
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local camera = workspace.CurrentCamera
+local savedPosition = nil
+local looping = false
+local cooldown = false
+
+-- Update character after respawn
+player.CharacterAdded:Connect(function(newCharacter)
+    character = newCharacter
+    wait(1)
+
+    camera.CameraSubject = character:WaitForChild("Humanoid")
+    camera.CameraType = Enum.CameraType.Custom
+end)
+
+-- Rainbow colors
+local rainbowColors = {
+    Color3.fromRGB(255, 0, 0),
+    Color3.fromRGB(255, 127, 0),
+    Color3.fromRGB(255, 255, 0),
+    Color3.fromRGB(0, 255, 0),
+    Color3.fromRGB(0, 255, 255),
+    Color3.fromRGB(0, 0, 255),
+    Color3.fromRGB(139, 0, 255)
+}
+
+-- Gray/Black colors
+local backgroundColors = {
+    Color3.fromRGB(0, 0, 0),
+    Color3.fromRGB(35, 35, 35),
+    Color3.fromRGB(60, 60, 60),
+    Color3.fromRGB(25, 25, 25)
+}
+
+-- Rainbow tween for platform
+local function rainbowTweenPart(part)
+    task.spawn(function()
+        while part and part.Parent do
+            for _, color in ipairs(rainbowColors) do
+                local tween = TweenService:Create(
+                    part,
+                    TweenInfo.new(0.4, Enum.EasingStyle.Linear),
+                    {Color = color}
+                )
+
+                tween:Play()
+                tween.Completed:Wait()
+            end
+        end
+    end)
+end
+
+-- Rainbow tween for text
+local function rainbowTweenText(button)
+    task.spawn(function()
+        while button and button.Parent do
+            if not cooldown then
+                for _, color in ipairs(rainbowColors) do
+                    if cooldown then
+                        break
+                    end
+
+                    local tween = TweenService:Create(
+                        button,
+                        TweenInfo.new(0.4, Enum.EasingStyle.Linear),
+                        {TextColor3 = color}
+                    )
+
+                    tween:Play()
+                    tween.Completed:Wait()
+                end
+            else
+                wait()
+            end
+        end
+    end)
+end
+
+-- Gray/Black background tween
+local function backgroundTween(button)
+    task.spawn(function()
+        while button and button.Parent do
+            for _, color in ipairs(backgroundColors) do
+                local tween = TweenService:Create(
+                    button,
+                    TweenInfo.new(0.8, Enum.EasingStyle.Sine),
+                    {BackgroundColor3 = color}
+                )
+
+                tween:Play()
+                tween.Completed:Wait()
+            end
+        end
+    end)
+end
+
+-- Create platform
+local function createPlatform(position)
+    local platform = Instance.new("Part")
+    platform.Name = "TemporaryPlatform"
+    platform.Size = platformSize
+    platform.Position = position
+    platform.Anchored = true
+    platform.Material = Enum.Material.Neon
+    platform.Color = Color3.fromRGB(255, 0, 0)
+    platform.Parent = workspace
+
+    rainbowTweenPart(platform)
+
+    return platform
+end
+
+-- Reset camera
+local function resetCamera()
+    if character and character:FindFirstChild("Humanoid") then
+        camera.CameraSubject = character.Humanoid
+        camera.CameraType = Enum.CameraType.Custom
+    end
+end
+
+-- Loop teleport
+local function loopTeleport()
+    if not character or not character:FindFirstChild("HumanoidRootPart") then
+        return
+    end
+
+    local rootPart = character.HumanoidRootPart
+    looping = true
+
+    local platform = createPlatform(teleportPosition + Vector3.new(0, -3, 0))
+
+    local startTime = tick()
+
+    while tick() - startTime < loopDuration and looping do
+        rootPart.CFrame = CFrame.new(teleportPosition)
+        wait(teleportInterval)
+    end
+
+    platform:Destroy()
+
+    if savedPosition and rootPart then
+        rootPart.CFrame = savedPosition
+    end
+
+    looping = false
+    resetCamera()
+end
+
+-- Create GUI
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "KillDeathGUI"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = player:WaitForChild("PlayerGui")
+
+-- Create Button
+local button = Instance.new("TextButton")
+button.Parent = screenGui
+button.Size = UDim2.new(0, 220, 0, 55)
+button.Position = UDim2.new(0.5, -110, 0, 0)
+button.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+button.TextColor3 = Color3.fromRGB(255, 0, 0)
+
+-- Montserrat font
+button.FontFace = Font.new(
+    "rbxasset://fonts/families/Montserrat.json",
+    Enum.FontWeight.Bold,
+    Enum.FontStyle.Normal
+)
+
+button.TextSize = 22
+button.Text = "Smash! Haha noob"
+button.AutoButtonColor = false
+button.BorderSizePixel = 0
+
+-- UICorner
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 11)
+corner.Parent = button
+
+-- Draggable button
+local dragging = false
+local dragInput
+local dragStart
+local startPos
+
+button.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1
+    or input.UserInputType == Enum.UserInputType.Touch then
+
+        dragging = true
+        dragStart = input.Position
+        startPos = button.Position
+
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+button.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement
+    or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        local delta = input.Position - dragStart
+
+        button.Position = UDim2.new(
+            startPos.X.Scale,
+            startPos.X.Offset + delta.X,
+            startPos.Y.Scale,
+            startPos.Y.Offset + delta.Y
+        )
+    end
+end)
+
+-- Start animations
+rainbowTweenText(button)
+backgroundTween(button)
+
+-- Notification
+game.StarterGui:SetCore("SendNotification", {
+    Title = "Alright, Script Loaded",
+    Text = "MADE BY SHORTGAMETESLA",
+    Duration = 5
+})
+
+-- Button click
+button.MouseButton1Click:Connect(function()
+    if looping or cooldown then
+        return
+    end
+
+    cooldown = true
+
+    if character and character:FindFirstChild("HumanoidRootPart") then
+        savedPosition = character.HumanoidRootPart.CFrame
+        loopTeleport()
+    end
+
+    -- Cooldown countdown
+    for i = cooldownTime, 1, -1 do
+        button.Text = "Cooldown: " .. i .. "s"
+        button.TextColor3 = Color3.fromRGB(255, 255, 255)
+        wait(1)
+    end
+
+    -- Reset button
+    button.Text = "Smash! Haha noob"
+    cooldown = false
+end)

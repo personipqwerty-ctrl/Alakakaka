@@ -48,7 +48,7 @@ textLabel.Position = UDim2.new(0, 10, 0, 10)
 textLabel.BackgroundTransparency = 1
 textLabel.TextWrapped = true
 textLabel.TextScaled = true
-textLabel.Text = "Thanks for Executing! We really appreciate it <3"
+textLabel.Text = "Thanks for Executing! We really appreciate you BUT I hope you have a good day! <3"
 
 textLabel.FontFace = Font.new(
     "rbxasset://fonts/families/Ubuntu.json",

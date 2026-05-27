@@ -1,209 +1,142 @@
--- "Kill Death" Button Script with:
--- Rainbow Platform
--- Rainbow Text
--- Gray/Black Animated Button Background
--- Montserrat Font
--- UICorner
--- Draggable Button
--- 7 Second Cooldown
-
 -- Services
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 
--- Configuration
-local teleportPosition = Vector3.new(240.31468200683594, -491.9150390625, -183.96755981445312)
+------------------------------------------------
+-- CONFIG
+------------------------------------------------
+local teleportPosition = Vector3.new(240.3146, -491.9150, -183.9675)
 local platformSize = Vector3.new(10, 1, 10)
+
 local loopDuration = 5
 local teleportInterval = 0.05
 local cooldownTime = 7
 
--- Variables
+------------------------------------------------
+-- PLAYER
+------------------------------------------------
 local player = game.Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
-local camera = workspace.CurrentCamera
+
+player.CharacterAdded:Connect(function(char)
+    character = char
+end)
+
 local savedPosition = nil
 local looping = false
 local cooldown = false
 
--- Update character after respawn
-player.CharacterAdded:Connect(function(newCharacter)
-    character = newCharacter
-    wait(1)
+------------------------------------------------
+-- INTRO UI
+------------------------------------------------
+local introGui = Instance.new("ScreenGui")
+introGui.Parent = player:WaitForChild("PlayerGui")
+introGui.ResetOnSpawn = false
 
-    camera.CameraSubject = character:WaitForChild("Humanoid")
-    camera.CameraType = Enum.CameraType.Custom
+local frame = Instance.new("Frame")
+frame.Parent = introGui
+frame.Size = UDim2.new(0, 420, 0, 220)
+frame.Position = UDim2.new(0.5, -210, 0.5, -110)
+frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+frame.BorderSizePixel = 0
+Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 12)
+
+local textLabel = Instance.new("TextLabel")
+textLabel.Parent = frame
+textLabel.Size = UDim2.new(1, -20, 0.7, 0)
+textLabel.Position = UDim2.new(0, 10, 0, 10)
+textLabel.BackgroundTransparency = 1
+textLabel.TextWrapped = true
+textLabel.TextScaled = true
+textLabel.Text = "Thanks for Executing! We really appreciate it <3"
+
+textLabel.FontFace = Font.new(
+    "rbxasset://fonts/families/Ubuntu.json",
+    Enum.FontWeight.Bold
+)
+
+------------------------------------------------
+-- 🌈 SMOOTH RAINBOW TEXT (INTRO)
+------------------------------------------------
+task.spawn(function()
+    local hue = 0
+    while textLabel and textLabel.Parent do
+        hue = (hue + 0.004) % 1
+        textLabel.TextColor3 = Color3.fromHSV(hue, 1, 1)
+        task.wait(0.02)
+    end
 end)
 
--- Rainbow colors
-local rainbowColors = {
-    Color3.fromRGB(255, 0, 0),
-    Color3.fromRGB(255, 127, 0),
-    Color3.fromRGB(255, 255, 0),
-    Color3.fromRGB(0, 255, 0),
-    Color3.fromRGB(0, 255, 255),
-    Color3.fromRGB(0, 0, 255),
-    Color3.fromRGB(139, 0, 255)
-}
+------------------------------------------------
+-- EXECUTE BUTTON
+------------------------------------------------
+local execButton = Instance.new("TextButton")
+execButton.Parent = frame
+execButton.Size = UDim2.new(0, 240, 0, 55)
+execButton.Position = UDim2.new(0.5, -120, 0.83, 0)
 
--- Gray/Black colors
-local backgroundColors = {
-    Color3.fromRGB(0, 0, 0),
-    Color3.fromRGB(35, 35, 35),
-    Color3.fromRGB(60, 60, 60),
-    Color3.fromRGB(25, 25, 25)
-}
+execButton.BackgroundColor3 = Color3.fromRGB(120, 120, 120) -- GRAY
+execButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 
--- Rainbow tween for platform
-local function rainbowTweenPart(part)
-    task.spawn(function()
-        while part and part.Parent do
-            for _, color in ipairs(rainbowColors) do
-                local tween = TweenService:Create(
-                    part,
-                    TweenInfo.new(0.4, Enum.EasingStyle.Linear),
-                    {Color = color}
-                )
+execButton.Text = "EXECUTE!"
+execButton.TextSize = 26 -- BIG TEXT
 
-                tween:Play()
-                tween.Completed:Wait()
-            end
-        end
-    end)
-end
+execButton.FontFace = textLabel.FontFace
+execButton.BorderSizePixel = 0
+Instance.new("UICorner", execButton).CornerRadius = UDim.new(0, 10)
 
--- Rainbow tween for text
-local function rainbowTweenText(button)
-    task.spawn(function()
-        while button and button.Parent do
-            if not cooldown then
-                for _, color in ipairs(rainbowColors) do
-                    if cooldown then
-                        break
-                    end
-
-                    local tween = TweenService:Create(
-                        button,
-                        TweenInfo.new(0.4, Enum.EasingStyle.Linear),
-                        {TextColor3 = color}
-                    )
-
-                    tween:Play()
-                    tween.Completed:Wait()
-                end
-            else
-                wait()
-            end
-        end
-    end)
-end
-
--- Gray/Black background tween
-local function backgroundTween(button)
-    task.spawn(function()
-        while button and button.Parent do
-            for _, color in ipairs(backgroundColors) do
-                local tween = TweenService:Create(
-                    button,
-                    TweenInfo.new(0.8, Enum.EasingStyle.Sine),
-                    {BackgroundColor3 = color}
-                )
-
-                tween:Play()
-                tween.Completed:Wait()
-            end
-        end
-    end)
-end
-
--- Create platform
-local function createPlatform(position)
-    local platform = Instance.new("Part")
-    platform.Name = "TemporaryPlatform"
-    platform.Size = platformSize
-    platform.Position = position
-    platform.Anchored = true
-    platform.Material = Enum.Material.Neon
-    platform.Color = Color3.fromRGB(255, 0, 0)
-    platform.Parent = workspace
-
-    rainbowTweenPart(platform)
-
-    return platform
-end
-
--- Reset camera
-local function resetCamera()
-    if character and character:FindFirstChild("Humanoid") then
-        camera.CameraSubject = character.Humanoid
-        camera.CameraType = Enum.CameraType.Custom
-    end
-end
-
--- Loop teleport
-local function loopTeleport()
-    if not character or not character:FindFirstChild("HumanoidRootPart") then
-        return
-    end
-
-    local rootPart = character.HumanoidRootPart
-    looping = true
-
-    local platform = createPlatform(teleportPosition + Vector3.new(0, -3, 0))
-
-    local startTime = tick()
-
-    while tick() - startTime < loopDuration and looping do
-        rootPart.CFrame = CFrame.new(teleportPosition)
-        wait(teleportInterval)
-    end
-
-    platform:Destroy()
-
-    if savedPosition and rootPart then
-        rootPart.CFrame = savedPosition
-    end
-
-    looping = false
-    resetCamera()
-end
-
--- Create GUI
+------------------------------------------------
+-- MAIN UI
+------------------------------------------------
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "KillDeathGUI"
-screenGui.ResetOnSpawn = false
 screenGui.Parent = player:WaitForChild("PlayerGui")
+screenGui.ResetOnSpawn = false
 
--- Create Button
 local button = Instance.new("TextButton")
 button.Parent = screenGui
 button.Size = UDim2.new(0, 220, 0, 55)
 button.Position = UDim2.new(0.5, -110, 0, 0)
-button.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-button.TextColor3 = Color3.fromRGB(255, 0, 0)
+button.BackgroundColor3 = Color3.fromRGB(0,0,0)
+button.Text = "Smash! Haha noob"
+button.Visible = false
 
--- Montserrat font
 button.FontFace = Font.new(
     "rbxasset://fonts/families/Montserrat.json",
-    Enum.FontWeight.Bold,
-    Enum.FontStyle.Normal
+    Enum.FontWeight.Bold
 )
 
 button.TextSize = 22
-button.Text = "Smash! Haha noob"
-button.AutoButtonColor = false
 button.BorderSizePixel = 0
+Instance.new("UICorner", button).CornerRadius = UDim.new(0, 11)
 
--- UICorner
-local corner = Instance.new("UICorner")
-corner.CornerRadius = UDim.new(0, 11)
-corner.Parent = button
+------------------------------------------------
+-- 🌈 SMOOTH RAINBOW (BUTTON TEXT)
+------------------------------------------------
+task.spawn(function()
+    local hue = 0
+    while button and button.Parent do
+        hue = (hue + 0.004) % 1
+        button.TextColor3 = Color3.fromHSV(hue, 1, 1)
+        task.wait(0.02)
+    end
+end)
 
--- Draggable button
-local dragging = false
-local dragInput
-local dragStart
-local startPos
+------------------------------------------------
+-- 🌈 SMOOTH RAINBOW (BUTTON BACKGROUND)
+------------------------------------------------
+task.spawn(function()
+    local hue = 0
+    while button and button.Parent do
+        hue = (hue + 0.002) % 1
+        button.BackgroundColor3 = Color3.fromHSV(hue, 0.2, 0.2)
+        task.wait(0.02)
+    end
+end)
+
+------------------------------------------------
+-- DRAG SYSTEM (FIXED)
+------------------------------------------------
+local dragging, dragInput, dragStart, startPos
 
 button.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1
@@ -229,9 +162,8 @@ button.InputChanged:Connect(function(input)
 end)
 
 UserInputService.InputChanged:Connect(function(input)
-    if input == dragInput and dragging then
+    if dragging and input == dragInput then
         local delta = input.Position - dragStart
-
         button.Position = UDim2.new(
             startPos.X.Scale,
             startPos.X.Offset + delta.X,
@@ -241,23 +173,68 @@ UserInputService.InputChanged:Connect(function(input)
     end
 end)
 
--- Start animations
-rainbowTweenText(button)
-backgroundTween(button)
+------------------------------------------------
+-- EXECUTE ACTION
+------------------------------------------------
+execButton.MouseButton1Click:Connect(function()
+    introGui:Destroy()
+    button.Visible = true
+end)
 
--- Notification
-game.StarterGui:SetCore("SendNotification", {
-    Title = "Alright, Script Loaded",
-    Text = "MADE BY SHORTGAMETESLA",
-    Duration = 5
-})
+------------------------------------------------
+-- PLATFORM
+------------------------------------------------
+local function createPlatform(pos)
+    local part = Instance.new("Part")
+    part.Size = platformSize
+    part.Position = pos
+    part.Anchored = true
+    part.Material = Enum.Material.Neon
+    part.Parent = workspace
 
--- Button click
-button.MouseButton1Click:Connect(function()
-    if looping or cooldown then
-        return
+    task.spawn(function()
+        local hue = 0
+        while part and part.Parent do
+            hue = (hue + 0.005) % 1
+            part.Color = Color3.fromHSV(hue, 1, 1)
+            task.wait(0.03)
+        end
+    end)
+
+    return part
+end
+
+------------------------------------------------
+-- TELEPORT LOOP
+------------------------------------------------
+local function loopTeleport()
+    if not character or not character:FindFirstChild("HumanoidRootPart") then return end
+
+    local root = character.HumanoidRootPart
+    looping = true
+
+    local platform = createPlatform(teleportPosition + Vector3.new(0,-3,0))
+
+    local start = tick()
+    while tick() - start < loopDuration and looping do
+        root.CFrame = CFrame.new(teleportPosition)
+        task.wait(teleportInterval)
     end
 
+    platform:Destroy()
+
+    if savedPosition then
+        root.CFrame = savedPosition
+    end
+
+    looping = false
+end
+
+------------------------------------------------
+-- COOLDOWN BUTTON
+------------------------------------------------
+button.MouseButton1Click:Connect(function()
+    if cooldown or looping then return end
     cooldown = true
 
     if character and character:FindFirstChild("HumanoidRootPart") then
@@ -265,14 +242,11 @@ button.MouseButton1Click:Connect(function()
         loopTeleport()
     end
 
-    -- Cooldown countdown
     for i = cooldownTime, 1, -1 do
         button.Text = "Cooldown: " .. i .. "s"
-        button.TextColor3 = Color3.fromRGB(255, 255, 255)
-        wait(1)
+        task.wait(1)
     end
 
-    -- Reset button
     button.Text = "Smash! Haha noob"
     cooldown = false
 end)
